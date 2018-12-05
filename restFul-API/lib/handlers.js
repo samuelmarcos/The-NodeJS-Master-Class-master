@@ -250,21 +250,85 @@ handlers._tokens.post = function(data,callback){
 };
 
 //Tokens - get
+//Required data : id
+//Optional data : none
 handlers._tokens.get = function(data,callback){
-  
+  //Chek the that the id is valid
+  var id = typeof(data.queryStringObject.id) == 'string' && data.queryStringObject.id.trim().length == 20 ? data.queryStringObject.id.trim() : false;
+  if(id){
+    //Lookup the user
+    _data.read('tokens', id,(err,tokenData) => {
+        if(!err && tokenData){
+            callback(200, tokenData);
+        }
+        else{
+            callback(404);
+        }
+    });
+  }
+  else{
+    callback(400, {'Error': 'Missing required field'});
+  }
 };
 
 //Tokens - put
+//Required data: id , extend
+//Optional data: none
 handlers._tokens.put = function(data,callback){
-  
+  var id = typeof(data.payload.id) == 'string' && data.payload.id.trim().length == 20 ? data.payload.id.trim() : false;
+  var extend = typeof(data.payload.extend) == 'boolean' && data.payload.extend == true ? true : false;
+  if(id && extend){
+    _data.read('tokens', id, (err,tokenData) =>{
+      if(!err && tokenData){
+        //Check to make sure the token ins't already expired
+        if(tokenData.expires > Date.now()){
+          //Set the expiration and hour from now
+          tokenData.expires = Date.now() + 1000 * 60 * 60;
+          //Store the new updates
+          _data.update('tokens', id, tokenData, (err)=>{
+            if(!err){
+              callback(200);
+            }else{
+              callback(500, {'Error':'Could not update the tokens expiration'});
+            }
+          });
+        }else{
+          callback(400, {'Error':'The token already expired, and can not be extended'});
+        }
+      }else{
+        callback(400,{'Error':'Espified token does not exist'});
+      }
+    });
+  }else{
+    callback(400, {'Error':'Missing required fields or fields are invalid'});
+  }
 };
 
 //Tokens - delete
+//Required data: id
+//Optional data: none
 handlers._tokens.delete = function(data,callback){
-  
+  //Check that the id is valid
+  var id = typeof(data.queryStringObject.id) == 'string' && data.queryStringObject.id.trim().length == 20 ? data.queryStringObject.id.trim() : false;
+  if(id){
+    //Lookup the token
+    _data.read('tokens', id,(err,data) => {
+        if(!err){
+            _data.delete('tokens',id, (err)=>{
+                if(!err){
+                    callback(200);
+                }else{
+                  callback(500,{'Error':'Could not delete the specidfied token'})
+                }
+            });
+        }else{
+          callback(400,{'Error': 'Could not find the specidfied token'});
+        }
+    });
+  }else{
+    callback(400, {'Error': 'Missing required field'});
+  }
 };
-
-
 
 
 
